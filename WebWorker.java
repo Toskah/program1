@@ -30,6 +30,7 @@ public class WebWorker implements Runnable
 {
 
 private Socket socket;
+String fileName = "";
 
 /**
 * Constructor: must have a valid open socket
@@ -49,11 +50,15 @@ public void run()
 {
    System.err.println("Handling connection...");
    try {
+	  
+	  
+	  
       InputStream  is = socket.getInputStream();
       OutputStream os = socket.getOutputStream();
-      readHTTPRequest(is);
+      fileName = readHTTPRequest(is, fileName);// this.... doesn't seem right.
+	 
       writeHTTPHeader(os,"text/html");
-      writeContent(os);
+      writeContent(os, fileName);
       os.flush();
       socket.close();
    } catch (Exception e) {
@@ -66,11 +71,43 @@ public void run()
 /**
 * Read the HTTP request header.
 **/
-private void readHTTPRequest(InputStream is)
+private String readHTTPRequest(InputStream is, String fileName)
 {
-   String line;
-   BufferedReader r = new BufferedReader(new InputStreamReader(is));
-   while (true) {
+	String line;
+	BufferedReader r = new BufferedReader(new InputStreamReader(is));
+   
+	//read the first line of the GET request to parse filename, subsequent lines are handled
+	//as written by previous author and left untouched
+    try{
+		while(! r.ready()) Thread.sleep(1); // wait until the buffered reader is ready.
+		line = r.readLine();
+	
+	System.out.println("First line of get is: " + line);
+	//attempt to serve the request
+	//break line into tokens to parse filename
+	StringTokenizer token = new StringTokenizer(line);
+	
+	//attempt to split string on tokens and set into fileName	
+	if(token.hasMoreElements() && token.nextToken().equalsIgnoreCase("GET") && token.hasMoreElements()) fileName= token.nextToken();
+	
+	System.out.println("Checking fileName... " + fileName);
+	//if filename ends improperly send to homepage
+	if(fileName.endsWith("/")) fileName += "home.html";
+   
+	//remove leading /
+	while(fileName.indexOf("/") == 0) fileName = fileName.substring(1);
+	
+	fileName = fileName.replace('/', File.separator.charAt(0));
+	
+	
+	//should check for illegal character but just going to throw a 404 instead of 
+	//sanitizing the inputs and looking for a correct file
+	
+	}
+	catch(Exception e){
+		e.printStackTrace(); //lazy exception handling.
+	}
+   /*while (true) {
       try {
          while (!r.ready()) Thread.sleep(1);
 
@@ -78,38 +115,13 @@ private void readHTTPRequest(InputStream is)
          line = r.readLine();
          System.err.println("Request line: ("+line+")");
          if (line.length()==0) break;
-	 
-	 //attempt to serve the request
-	 String fileName = "";
-         //break line into tokens to parse filename
-	 StringTokenizer token = new StringTokenizer(line);
-	 
-	 //attempt to split string on tokens and set into fileName	
-	 if(token.hasMoreElements() && token.nextToken().equalsIgnoreCase("GET") && 	     		    token.hasMoreElements()) fileName= token.nextToken();
-	 //didn't find the file
-	 else
-	    throw new FileNotFoundException(); 
-
-	 //if filename ends improperly send to homepage
-	 if(fileName.endsWith("/")) fileName += "home.html";
-         
-	 //remove leading /
-	 while(fileName.indexOf("/") == 0)
-	     fileName = fileName.substring(1);
-
-         fileName = fileName.replace('/', File.separator.charAt(0));
-	 //should check for illegal character but just going to throw a 404 instead of 
-	 //sanitizing the inputs and looking for a correct file
-
-	 //open the file
-	 InputStream file = new FileInputStream(fileName);
 	
       } catch (Exception e) {
          System.err.println("Request error: "+e);
          break;
       }
-   }
-   return;
+   }*/
+   return fileName;
 }
 
 /**
@@ -141,11 +153,34 @@ private void writeHTTPHeader(OutputStream os, String contentType) throws Excepti
 * be done after the HTTP header has been written out.
 * @param os is the OutputStream object to write to
 **/
-private void writeContent(OutputStream os) throws Exception
-{
-   os.write("<html><head></head><body>\n".getBytes());
-   os.write("<h3>My web server works!</h3>\n".getBytes());
-   os.write("</body></html>\n".getBytes());
+private void writeContent(OutputStream os, String fileName) throws Exception
+{	
+	System.out.println("in writeContent");
+	String line = null;
+	try{
+		//open the file with FileReader
+		FileReader fileReader = new FileReader(fileName);
+		
+		//wrap in BufferedReader
+		BufferedReader bf = new BufferedReader(fileReader); //would normally give a more meaningful name but this is a smol project.
+		
+		while(( line = bf.readLine()) != null){
+			os.write(line.getBytes());
+		}
+	/*
+    os.write("<html><head></head><body>\n".getBytes());
+    os.write("<h3>My web server works!</h3>\n".getBytes());
+    os.write("</body></html>\n".getBytes());*/
+	
+	}
+	catch(FileNotFoundException e){
+		System.err.println("Error in writeContent, file not found: " + fileName );
+	}
+	
+	catch(IOException e){
+		e.printStackTrace();
+	}
 }
+
 
 } // end class
