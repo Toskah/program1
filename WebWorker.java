@@ -25,6 +25,8 @@ import java.lang.Runnable;
 import java.io.*;
 import java.util.*;
 import java.text.DateFormat;
+import java.awt.*;
+import javax.imageio.ImageIO;
 
 public class WebWorker implements Runnable
 {
@@ -90,16 +92,17 @@ private String readHTTPRequest(InputStream is, String fileName)
 	//attempt to split string on tokens and set into fileName	
 	if(token.hasMoreElements() && token.nextToken().equalsIgnoreCase("GET") && token.hasMoreElements()) fileName= token.nextToken();
 	
-	System.out.println("Checking fileName... " + fileName);
+	
 	//if filename ends improperly send to homepage
 	if(fileName.endsWith("/")) fileName += "home.html";
    
 	//remove leading /
 	while(fileName.indexOf("/") == 0) fileName = fileName.substring(1);
+	if(fileName.length() <= 1) fileName = "home.html";
 	
 	fileName = fileName.replace('/', File.separator.charAt(0));
 	
-	
+	System.out.println("Checking fileName... " + fileName);
 	//should check for illegal character but just going to throw a 404 instead of 
 	//sanitizing the inputs and looking for a correct file
 	
@@ -107,20 +110,7 @@ private String readHTTPRequest(InputStream is, String fileName)
 	catch(Exception e){
 		e.printStackTrace(); //lazy exception handling.
 	}
-   /*while (true) {
-      try {
-         while (!r.ready()) Thread.sleep(1);
-
-	 //reads the request
-         line = r.readLine();
-         System.err.println("Request line: ("+line+")");
-         if (line.length()==0) break;
 	
-      } catch (Exception e) {
-         System.err.println("Request error: "+e);
-         break;
-      }
-   }*/
    return fileName;
 }
 
@@ -131,21 +121,28 @@ private String readHTTPRequest(InputStream is, String fileName)
 **/
 private void writeHTTPHeader(OutputStream os, String contentType) throws Exception
 {
-   Date d = new Date();
-   DateFormat df = DateFormat.getDateTimeInstance();
-   df.setTimeZone(TimeZone.getTimeZone("GMT"));
-   os.write("HTTP/1.1 200 OK\n".getBytes());
-   os.write("Date: ".getBytes());
-   os.write((df.format(d)).getBytes());
-   os.write("\n".getBytes());
-   os.write("Server: Jon's very own server\n".getBytes());
-   //os.write("Last-Modified: Wed, 08 Jan 2003 23:11:55 GMT\n".getBytes());
-   //os.write("Content-Length: 438\n".getBytes()); 
-   os.write("Connection: close\n".getBytes());
-   os.write("Content-Type: ".getBytes());
-   os.write(contentType.getBytes());
-   os.write("\n\n".getBytes()); // HTTP header ends with 2 newlines
-   return;
+	try{
+		FileReader fr = new FileReader(fileName);
+	}
+	catch(Exception e){
+		e.printStackTrace();
+		os.write("HTTP/1.1 404 NOT FOUND\n".getBytes());
+		
+	}	
+	
+	os.write("HTTP/1.1 200 OK\n".getBytes());
+   	
+	os.write("Date: ".getBytes());
+   	os.write(getDate().getBytes());
+   	os.write("\n".getBytes());
+   	os.write("Server: Lupercal! \n".getBytes());
+   	//os.write("Last-Modified: Wed, 08 Jan 2003 23:11:55 GMT\n".getBytes());
+   	//os.write("Content-Length: 438\n".getBytes()); 
+   	os.write("Connection: close\n".getBytes());
+   	os.write("Content-Type: ".getBytes());
+   	os.write(contentType.getBytes());
+   	os.write("\n\n".getBytes()); // HTTP header ends with 2 newlines
+   	return;
 }
 
 /**
@@ -155,25 +152,48 @@ private void writeHTTPHeader(OutputStream os, String contentType) throws Excepti
 **/
 private void writeContent(OutputStream os, String fileName) throws Exception
 {	
-	System.out.println("in writeContent");
 	String line = null;
 	try{
 		//open the file with FileReader
 		FileReader fileReader = new FileReader(fileName);
-		
+	
 		//wrap in BufferedReader
 		BufferedReader bf = new BufferedReader(fileReader); //would normally give a more meaningful name but this is a smol project.
 		
 		while(( line = bf.readLine()) != null){
+			StringTokenizer token = new StringTokenizer(line);
+			
+			while(token.hasMoreElements()){
+				String temp = token.nextToken(); //temp token to not continue iterating through while checking values
+				if(temp.equals("<cs371date>")){
+					os.write(("<p> " + getDate() + "</p>\n").getBytes());
+					break; //break and do not continue looping
+				}
+				else if(temp.equals("<cs371server>")){
+					os.write(("<p> Lupercal! Lupercal, For the WarMaster! </p>\n").getBytes());
+					break; //break and do not continue looping
+				}
+			}
+			//else if(token.nextToken().equals("cs371server>")) os.write(("<p> Luna Wolve's Den </p> ").getBytes());
 			os.write(line.getBytes());
 		}
-	/*
-    os.write("<html><head></head><body>\n".getBytes());
-    os.write("<h3>My web server works!</h3>\n".getBytes());
-    os.write("</body></html>\n".getBytes());*/
-	
+		bf.close();
+		fileReader.close();
 	}
 	catch(FileNotFoundException e){
+		try{
+			FileReader notFound = new FileReader("heretic.html");
+			BufferedReader bf = new BufferedReader(notFound);
+			String nfLine = null;
+			Image heretic = new ImageIO(new File("heretic.jpg"));
+			while((nfLine = bf.readLine())!= null){
+				os.write(nfLine.getBytes());
+				os.write(heretic.getBytes());
+			}
+		}
+		catch(Exception x){
+				System.err.println("something went REAL wrong");
+			}
 		System.err.println("Error in writeContent, file not found: " + fileName );
 	}
 	
@@ -182,5 +202,13 @@ private void writeContent(OutputStream os, String fileName) throws Exception
 	}
 }
 
+//returns a formatted date string
+private String getDate(){
+	Date d = new Date();
+	DateFormat df = DateFormat.getDateTimeInstance();
+	df.setTimeZone(TimeZone.getTimeZone("GMT"));
+
+    return df.format(d);
+}
 
 } // end class
