@@ -25,8 +25,7 @@ import java.lang.Runnable;
 import java.io.*;
 import java.util.*;
 import java.text.DateFormat;
-import java.awt.*;
-import javax.imageio.ImageIO;
+
 
 public class WebWorker implements Runnable
 {
@@ -181,20 +180,9 @@ private void writeContent(OutputStream os, String fileName) throws Exception
 		fileReader.close();
 	}
 	catch(FileNotFoundException e){
-		try{
-			FileReader notFound = new FileReader("heretic.html");
-			BufferedReader bf = new BufferedReader(notFound);
-			String nfLine = null;
-			Image heretic = new ImageIO(new File("heretic.jpg"));
-			while((nfLine = bf.readLine())!= null){
-				os.write(nfLine.getBytes());
-				os.write(heretic.getBytes());
-			}
-		}
-		catch(Exception x){
-				System.err.println("something went REAL wrong");
-			}
-		System.err.println("Error in writeContent, file not found: " + fileName );
+		os.write("<p> HERETICAL PAGE NOT FOUND. PURGING... PRUGING... PURGED. </p>".getBytes());
+		os.write("<br><br> <p> 404 NOT FOUND </p>".getBytes()); 	
+
 	}
 	
 	catch(IOException e){
