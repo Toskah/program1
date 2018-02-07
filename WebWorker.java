@@ -53,15 +53,22 @@ public void run()
 {
    System.err.println("Handling connection...");
    try {
-	  
-	  
+	  //initial response
+	  String response = "HTTP/1.1 200 OK\n";
 	  
       InputStream  is = socket.getInputStream();
       OutputStream os = socket.getOutputStream();
       readHTTPRequest(is);
-	 
-      writeHTTPHeader(os,getMimeType(fileName));
-      writeContent(os);
+	  File pageFile = openFile(fileName);
+	  //handle files that are not on the server
+	  if(!pageFile.exists()){
+		  response = "HTTP/1.1 404 NOT FOUND\n";
+		  fileName = "heretic.html";
+		  pageFile = openFile(fileName);
+	  }
+	  
+      writeHTTPHeader(os,getMimeType(fileName), response);
+      writeContent(os, pageFile);
       os.flush();
       socket.close();
    } catch (Exception e) {
@@ -121,18 +128,9 @@ private void readHTTPRequest(InputStream is)
 * @param os is the OutputStream object to write to
 * @param contentType is the string MIME content type (e.g. "text/html")
 **/
-private void writeHTTPHeader(OutputStream os, String contentType) throws Exception
-{
-	try{
-		FileReader fr = new FileReader(fileName);
-	}
-	catch(Exception e){
-		e.printStackTrace();
-		os.write("HTTP/1.1 404 NOT FOUND\n".getBytes());
-		
-	}	
-	
-	os.write("HTTP/1.1 200 OK\n".getBytes());
+private void writeHTTPHeader(OutputStream os, String contentType, String response) throws Exception
+{	
+	os.write(response.getBytes());
    	
 	os.write("Date: ".getBytes());
    	os.write(getDate().getBytes());
@@ -144,7 +142,7 @@ private void writeHTTPHeader(OutputStream os, String contentType) throws Excepti
    	os.write("Content-Type: ".getBytes());
    	os.write(contentType.getBytes());
    	os.write("\n\n".getBytes()); // HTTP header ends with 2 newlines
-	os.close();
+
    	return;
 }
 
@@ -156,17 +154,17 @@ private void writeHTTPHeader(OutputStream os, String contentType) throws Excepti
 
 //this is a terrible way of handling the write content method. There are much more elegant solutions
 
-private void writeContent(OutputStream os) throws Exception
+private void writeContent(OutputStream os, File pageFile) throws Exception
 {	
 	String line = null;
 	try{
 		//open the file with FileReader
-		FileReader fileReader = new FileReader(fileName);
+		
 	
 		//wrap in BufferedReader
-		BufferedReader bf = new BufferedReader(fileReader); //would normally give a more meaningful name but this is a smol project.
+		BufferedReader bf = new BufferedReader(new FileReader(pageFile)); //would normally give a more meaningful name but this is a smol project.
 		
-		while(( line = bf.readLine()) != null){
+		/*while(( line = bf.readLine()) != null){
 			StringTokenizer token = new StringTokenizer(line);
 			
 			while(token.hasMoreElements()){
@@ -180,11 +178,18 @@ private void writeContent(OutputStream os) throws Exception
 					break; //break and do not continue looping
 				}
 			}
-			//else if(token.nextToken().equals("cs371server>")) os.write(("<p> Luna Wolve's Den </p> ").getBytes());
+			
+		
 			os.write(line.getBytes());
+		}*/
+		
+		FileInputStream fs = new FileInputStream(pageFile);
+		final byte [] buffer = new byte[0x10000];
+		int count = 0;
+		while((count = fs.read(buffer)) >= 0){
+			os.write(buffer, 0, count);
 		}
 		bf.close();
-		fileReader.close();
 	}
 	catch(FileNotFoundException e){
 		os.write("<p> HERETICAL PAGE NOT FOUND. PURGING... PRUGING... PURGED. </p>".getBytes());
@@ -196,7 +201,7 @@ private void writeContent(OutputStream os) throws Exception
 		e.printStackTrace();
 	}
 	
-	os.close();
+
 	return;
 }
 
