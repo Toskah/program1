@@ -25,13 +25,15 @@ import java.lang.Runnable;
 import java.io.*;
 import java.util.*;
 import java.text.DateFormat;
+import java.net.FileNameMap;
+import java.net.URLConnection;
 
 
 public class WebWorker implements Runnable
 {
 
 private Socket socket;
-String fileName = "";
+private String fileName = "";
 
 /**
 * Constructor: must have a valid open socket
@@ -56,10 +58,10 @@ public void run()
 	  
       InputStream  is = socket.getInputStream();
       OutputStream os = socket.getOutputStream();
-      fileName = readHTTPRequest(is, fileName);// this.... doesn't seem right.
+      readHTTPRequest(is);
 	 
-      writeHTTPHeader(os,"text/html");
-      writeContent(os, fileName);
+      writeHTTPHeader(os,getMimeType(fileName));
+      writeContent(os);
       os.flush();
       socket.close();
    } catch (Exception e) {
@@ -72,7 +74,7 @@ public void run()
 /**
 * Read the HTTP request header.
 **/
-private String readHTTPRequest(InputStream is, String fileName)
+private void readHTTPRequest(InputStream is)
 {
 	String line;
 	BufferedReader r = new BufferedReader(new InputStreamReader(is));
@@ -101,6 +103,7 @@ private String readHTTPRequest(InputStream is, String fileName)
 	
 	fileName = fileName.replace('/', File.separator.charAt(0));
 	
+	
 	System.out.println("Checking fileName... " + fileName);
 	//should check for illegal character but just going to throw a 404 instead of 
 	//sanitizing the inputs and looking for a correct file
@@ -110,7 +113,7 @@ private String readHTTPRequest(InputStream is, String fileName)
 		e.printStackTrace(); //lazy exception handling.
 	}
 	
-   return fileName;
+   
 }
 
 /**
@@ -141,6 +144,7 @@ private void writeHTTPHeader(OutputStream os, String contentType) throws Excepti
    	os.write("Content-Type: ".getBytes());
    	os.write(contentType.getBytes());
    	os.write("\n\n".getBytes()); // HTTP header ends with 2 newlines
+	os.close();
    	return;
 }
 
@@ -149,7 +153,10 @@ private void writeHTTPHeader(OutputStream os, String contentType) throws Excepti
 * be done after the HTTP header has been written out.
 * @param os is the OutputStream object to write to
 **/
-private void writeContent(OutputStream os, String fileName) throws Exception
+
+//this is a terrible way of handling the write content method. There are much more elegant solutions
+
+private void writeContent(OutputStream os) throws Exception
 {	
 	String line = null;
 	try{
@@ -188,6 +195,9 @@ private void writeContent(OutputStream os, String fileName) throws Exception
 	catch(IOException e){
 		e.printStackTrace();
 	}
+	
+	os.close();
+	return;
 }
 
 //returns a formatted date string
@@ -198,5 +208,17 @@ private String getDate(){
 
     return df.format(d);
 }
+
+//handles automatic MIME type identification
+private static String getMimeType(String filePath) throws java.io.IOException {
+	
+	FileNameMap fileNameMap = URLConnection.getFileNameMap();
+	String type = fileNameMap.getContentTypeFor(filePath);
+	
+	return type;
+	
+}
+
+private static File openFile(String fn) throws java.io. IOException { return new File(fn); }
 
 } // end class
