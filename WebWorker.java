@@ -60,6 +60,7 @@ public void run()
       OutputStream os = socket.getOutputStream();
       readHTTPRequest(is);
 	  File pageFile = openFile(fileName);
+	  
 	  //handle files that are not on the server
 	  if(!pageFile.exists()){
 		  response = "HTTP/1.1 404 NOT FOUND\n";
@@ -90,32 +91,34 @@ private void readHTTPRequest(InputStream is)
 	//as written by previous author and left untouched
     try{
 		while(! r.ready()) Thread.sleep(1); // wait until the buffered reader is ready.
-		line = r.readLine();
+		do
+		{
+			line = r.readLine();
+			
+			if(line.equals("")) break;
+			System.out.println("Request: " + line);
+			//attempt to serve the request
+			//break line into tokens to parse filename
+			StringTokenizer token = new StringTokenizer(line);
 	
-	System.out.println("First line of get is: " + line);
-	//attempt to serve the request
-	//break line into tokens to parse filename
-	StringTokenizer token = new StringTokenizer(line);
-	
-	//attempt to split string on tokens and set into fileName	
-	if(token.hasMoreElements() && token.nextToken().equalsIgnoreCase("GET") && token.hasMoreElements()) fileName= token.nextToken();
+			//attempt to split string on tokens and set into fileName	
+			if(token.hasMoreElements() && token.nextToken().equalsIgnoreCase("GET") && token.hasMoreElements()) fileName= token.nextToken();
 	
 	
-	//if filename ends improperly send to homepage
-	if(fileName.endsWith("/")) fileName += "home.html";
+			//if filename ends improperly send to homepage
+			if(fileName.endsWith("/")) fileName += "home.html";
    
-	//remove leading /
-	while(fileName.indexOf("/") == 0) fileName = fileName.substring(1);
-	if(fileName.length() <= 1) fileName = "home.html";
+			//remove leading /
+			while(fileName.indexOf("/") == 0) fileName = fileName.substring(1);
+			if(fileName.length() <= 1) fileName = "home.html";
 	
-	fileName = fileName.replace('/', File.separator.charAt(0));
-	
-	
-	System.out.println("Checking fileName... " + fileName);
-	//should check for illegal character but just going to throw a 404 instead of 
-	//sanitizing the inputs and looking for a correct file
-	
+			fileName = fileName.replace('/', File.separator.charAt(0));
+			//should check for illegal character but just going to throw a 404 instead of 
+			//sanitizing the inputs and looking for a correct file
+			
+		}while(true);
 	}
+	
 	catch(Exception e){
 		e.printStackTrace(); //lazy exception handling.
 	}
@@ -158,43 +161,34 @@ private void writeContent(OutputStream os, File pageFile) throws Exception
 {	
 	String line = null;
 	try{
-		//open the file with FileReader
 		
-	
-		//wrap in BufferedReader
-		BufferedReader bf = new BufferedReader(new FileReader(pageFile)); //would normally give a more meaningful name but this is a smol project.
+		//create a file inputstream
+		FileInputStream fs = new FileInputStream(pageFile);
+		byte [] buffer = new byte[0x100000]; //buffer for bytestream from FileInputStream
+		int count = 0; //count for determining length to write
 		
-		/*while(( line = bf.readLine()) != null){
-			StringTokenizer token = new StringTokenizer(line);
+		while((count = fs.read(buffer)) >= 0){
 			
-			while(token.hasMoreElements()){
-				String temp = token.nextToken(); //temp token to not continue iterating through while checking values
-				if(temp.equals("<cs371date>")){
-					os.write(("<p> " + getDate() + "</p>\n").getBytes());
-					break; //break and do not continue looping
-				}
-				else if(temp.equals("<cs371server>")){
-					os.write(("<p> Lupercal! Lupercal, For the WarMaster! </p>\n").getBytes());
-					break; //break and do not continue looping
-				}
+			line = new String(buffer); //use a string to check for tags
+			
+			//replace server tags with correct info
+			if(line.contains("<cs371date>")){
+				line = line.replace("<cs371date>" , getDate()); //replace the tag
+				buffer = line.getBytes(); //stuff into byte []
+				count = buffer.length;    //replace count with the correct byte length to print in os.write
+			}
+			if(line.contains("<cs371server>")){
+				line = line.replace("<cs371server>", "Lupercal! For the Warmaster!");
+				buffer = line.getBytes();
+				count = buffer.length;
 			}
 			
-		
-			os.write(line.getBytes());
-		}*/
-		
-		FileInputStream fs = new FileInputStream(pageFile);
-		final byte [] buffer = new byte[0x10000];
-		int count = 0;
-		while((count = fs.read(buffer)) >= 0){
+			//write out using the byte[] 
 			os.write(buffer, 0, count);
 		}
-		bf.close();
 	}
 	catch(FileNotFoundException e){
-		os.write("<p> HERETICAL PAGE NOT FOUND. PURGING... PRUGING... PURGED. </p>".getBytes());
-		os.write("<br><br> <p> 404 NOT FOUND </p>".getBytes()); 	
-
+		os.write("You should never get here if you do something went very very wrong".getBytes()); 
 	}
 	
 	catch(IOException e){
@@ -206,7 +200,7 @@ private void writeContent(OutputStream os, File pageFile) throws Exception
 }
 
 //returns a formatted date string
-private String getDate(){
+private static String getDate(){
 	Date d = new Date();
 	DateFormat df = DateFormat.getDateTimeInstance();
 	df.setTimeZone(TimeZone.getTimeZone("GMT"));
@@ -224,6 +218,7 @@ private static String getMimeType(String filePath) throws java.io.IOException {
 	
 }
 
+//opens a file
 private static File openFile(String fn) throws java.io. IOException { return new File(fn); }
 
 } // end class
