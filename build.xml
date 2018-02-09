@@ -1,5 +1,17 @@
 <project name="WebServer" default="compile">
-<target name="compile">
-<javac srcdir="." destdir="./"/>
-</target>
+	
+	<target name="compile">
+		<javac srcdir="." destdir="./"/>
+	</target>
+	
+	
+	<target name="run">
+		<jar destfile="./WebServer.jar" basedir="./">
+			<manifest>
+				<attribute name="Main-Class" value="WebServer"/>
+			</manifest>
+		</jar>
+		<java jar="WebServer.jar" fork="true" />
+	</target>
+	
 </project>

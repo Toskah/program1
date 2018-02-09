@@ -64,7 +64,7 @@ public void run()
 	  //handle files that are not on the server
 	  if(!pageFile.exists()){
 		  response = "HTTP/1.1 404 NOT FOUND\n";
-		  fileName = "heretic.html";
+		  fileName = "heretic.html"; //contains a large image file, however other pages have images within the restrictions.
 		  pageFile = openFile(fileName);
 	  }
 	  
@@ -139,8 +139,6 @@ private void writeHTTPHeader(OutputStream os, String contentType, String respons
    	os.write(getDate().getBytes());
    	os.write("\n".getBytes());
    	os.write("Server: Lupercal! \n".getBytes());
-   	//os.write("Last-Modified: Wed, 08 Jan 2003 23:11:55 GMT\n".getBytes());
-   	//os.write("Content-Length: 438\n".getBytes()); 
    	os.write("Connection: close\n".getBytes());
    	os.write("Content-Type: ".getBytes());
    	os.write(contentType.getBytes());
